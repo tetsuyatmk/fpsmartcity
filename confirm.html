@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>スマートシティ　サンプル　認証コードの入力</title>
+
+    <!-- jQuery の読み込み -->
+    <script src="https://code.jquery.com/jquery-2.0.0.min.js"></script>
+
+    <!-- BootstrapのCSS読み込み -->
+    <link href="css/bootstrap.min.css" rel="stylesheet">
+    <!-- BootstrapのJS読み込み -->
+    <script src="js/bootstrap.min.js"></script>
+
+    <!-- AWS SDK -->
+    <script src="aws-cognito-sdk.min.js"></script>
+    <script src="amazon-cognito-identity.min.js"></script>
+    <script src="aws-sdk.js"></script>
+
+  </head>
+  <body>
+    <div class="container">
+      <div class="row" style="margin-top:20px">
+        <div class="col-xs-12 col-sm-8 col-md-6 col-sm-offset-2 col-md-offset-3">
+             <fieldset>
+               <h2>ユーザー登録が完了しました</h2>
+             </fieldset>
+         </div>
+       </div>
+     </div>
+
+     <!-- login 処理 -->
+     <script type="text/javascript">
+
+     //変数argはオブジェクトですよ
+     var arg = new Object;
+
+     // 変数pairにURLの?の後ろを&で区切ったものを配列にして代入
+     var pair=location.search.substring(1).split('&');
+
+     // location.search.substring(1)は、URLから最初の1文字 (?記号) を除いた文字列を取得する
+     // .split('&')は&で区切り配列に分割する
+
+     // for文でrairがある限りループさせる
+     for(var i=0;pair[i];i++) {
+       // 変数kvにpairを=で区切り配列に分割する
+       var kv = pair[i].split('=');// kvはkey-value
+
+       // 最初に定義したオブジェクトargに連想配列として格納
+       arg[kv[0]]=kv[1];  // kv[0]がkey,kv[1]がvalue
+     }
+
+     // 初期化処理
+     $(document).ready(function(){
+
+         // Under the original name:
+         var CognitoUserPool = AmazonCognitoIdentity.CognitoUserPool;
+
+         var poolData = {
+           UserPoolId : 'ap-northeast-1_IH6ufcodd', // Your user pool id here
+           ClientId   : 'fpfhdjqefae323kad8f6f5hf4' // Your client id here
+         };
+
+         var userPool = new AWSCognito.CognitoIdentityServiceProvider.CognitoUserPool(poolData);
+         var userData = {
+           Username : arg.username,
+           Pool : userPool
+         };
+
+      var confirmcode = arg.confirmcode;
+
+      var cognitoUser = new AWSCognito.CognitoIdentityServiceProvider.CognitoUser(userData);
+      cognitoUser.confirmRegistration(confirmcode, true, function(err, result) {
+        if (err) {
+          alert(err);
+          return;
+        }
+        alert("OK!!!!");
+
+        var sns = new AWS.SNS();
+        sns.publish({
+          // TopicArn:'arn:aws:sns:us-west-2:302467918846:MyTestTopik',
+          TargetArn:'arn:aws:sns:ap-northeast-1:911769005197:fpMitaSNS',
+          Message:"Success!!! ",
+          Subject: "TestSNS"},
+          function(err,data){
+            if (err){
+              console.log("Error sending a message "+err);
+            }else{
+              console.log("Sent message: "+data.MessageId);
+            }
+          });
+      });
+  });
+     </script>
+
+  </body>
+</html>

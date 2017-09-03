@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>スマートシティ　サンプル</title>
+
+    <!-- jQuery の読み込み -->
+    <script src="https://code.jquery.com/jquery-2.0.0.min.js"></script>
+
+    <!-- BootstrapのCSS読み込み -->
+    <link href="css/bootstrap.min.css" rel="stylesheet">
+    <!-- BootstrapのJS読み込み -->
+    <script src="js/bootstrap.min.js"></script>
+
+    <!-- AWS SDK -->
+    <script src="https://sdk.amazonaws.com/js/aws-sdk-2.108.0.min.js"></script>
+    <!-- <script src="lib/aws/aws-sdk.js"></script> -->
+    <script src="lib/aws/aws-cognito-sdk.min.js"></script>
+    <script src="lib/aws/amazon-cognito-identity.min.js"></script>
+
+  </head>
+  <body>
+    <div class="container">
+      <div class="row" style="margin-top:20px">
+        <div class="col-xs-12 col-sm-8 col-md-6 col-sm-offset-2 col-md-offset-3">
+      	   <form role="form" id="authform">
+             <fieldset>
+               <h2>スマートシティ見守りサービス</h2>
+               <hr class="colorgraph">
+               <div class="form-group">
+                 <input type="text" name="accountid" id="accountid" class="form-control input-lg" placeholder="ユーザーIDを入力してください">
+               </div>
+               <div class="form-group">
+                 <input type="email" name="email" id="email" class="form-control input-lg" placeholder="メールアドレスを入力してください">
+               </div>
+               <div class="form-group">
+                 <input type="password" name="password" id="password" class="form-control input-lg" placeholder="パスワードを入力してください">
+               </div>
+               <span class="button-checkbox">
+                 <button type="button" class="btn" data-color="info">Remember Me</button>
+                 <input type="checkbox" name="remember_me" id="remember_me" checked="checked" class="hidden">
+                 <a href="" class="btn btn-link pull-right">パスワードを忘れた場合</a>
+               </span>
+               <hr class="colorgraph">
+               <div class="row">
+                 <div class="col-xs-6 col-sm-6 col-md-6">
+                   <type="button" class="btn btn-lg btn-success btn-block" id="$signin">ログイン
+                 </div>
+                 <div class="col-xs-6 col-sm-6 col-md-6">
+                   <type="button" class="btn btn-lg btn-primary btn-block" id="$signup">アカウント作成
+                 </div>
+               </div>
+             </fieldset>
+           </form>
+         </div>
+       </div>
+     </div>
+
+     <!-- login 処理 -->
+     <script type="text/javascript">
+
+     // 初期化処理
+     $(document).ready(function(){
+
+       // ログイン機能
+       $($signin).click(function(){
+
+         AWSCognito.config.region = "ap-northeast-1";
+         AWSCognito.config.credentials = new AWS.CognitoIdentityCredentials({
+             IdentityPoolId: "ap-northeast-1:8e4b5457-e568-4fcc-8204-032819dc9bce"
+         });
+
+         var authenticationData = {
+             Username : $('#authform [name=accountid]').val(),
+             Password : $('#authform [name=password]').val()
+         };
+         var authenticationDetails = new AWSCognito.CognitoIdentityServiceProvider.AuthenticationDetails(authenticationData);
+         var poolData = {
+           UserPoolId : 'ap-northeast-1_IH6ufcodd', // Your user pool id here
+           ClientId   : 'fpfhdjqefae323kad8f6f5hf4' // Your client id here
+         };
+         var userPool = new AWSCognito.CognitoIdentityServiceProvider.CognitoUserPool(poolData);
+         var userData = {
+             Username : $('#authform [name=accountid]').val(),
+             Pool : userPool
+            };
+         var cognitoUser = new AWSCognito.CognitoIdentityServiceProvider.CognitoUser(userData);
+         cognitoUser.authenticateUser(authenticationDetails, {
+             onSuccess: function (result) {
+                 console.log('access token + ' + result.getIdToken().getJwtToken());
+                 sessionStorage.setItem('token', result.getIdToken().getJwtToken());
+                 window.location.href = "./todo.html";
+             },
+             onFailure: function(err) {
+                 alert(err);
+             },
+         });
+       });
+
+       // アカウント登録
+       $($signup).click(function(){
+         // UserPoolインスタンスの作成
+         var poolData = {
+           UserPoolId : 'ap-northeast-1_IH6ufcodd', // Your user pool id here
+           ClientId   : 'fpfhdjqefae323kad8f6f5hf4' // Your client id here
+         };
+         var userPool = new AWSCognito.CognitoIdentityServiceProvider.CognitoUserPool(poolData);
+
+         // アカウントID、パスワード
+         var accountid = $('#authform [name=accountid]').val();
+         var password = $('#authform [name=password]').val();
+
+         // 認証に必要な情報を取得
+         var attributeList = [];
+         var dataEmail = {
+           Name : 'email',
+           Value : $('#authform [name=email]').val(),
+         };
+         var attributeEmail = new AWSCognito.CognitoIdentityServiceProvider.CognitoUserAttribute(dataEmail);
+         attributeList.push(attributeEmail);
+
+         // サインアップ
+         userPool.signUp(accountid, password, attributeList, null, function(err, result){
+           if (err) {
+             if(err.code == "UsernameExistsException"){
+               alert("すでに登録されたアカウントです。");
+             }
+             else if(err.code == "InvalidParameterException"){
+               alert("パスワードは６文字以上で数値を含めて設定してください。");
+             }else if (err.code == "InvalidParameterException"){
+               alert();
+             }else{
+               alert("その他のエラー" + err.code);
+             }
+             return;
+           }
+           cognitoUser = result.user;
+           //メール送信完了ページへ移動
+           sessionStorage.setItem('username', cognitoUser.getUsername());
+           sessionStorage.setItem('email', $('#authform [name=email]').val());
+           window.location.href = "./tempreg.html";
+         });
+       });
+     });
+     </script>
+
+  </body>
+</html>

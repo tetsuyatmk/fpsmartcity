@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>スマートシティ見守りサービス</title>
+
+    <!-- jQuery の読み込み -->
+    <script src="https://code.jquery.com/jquery-2.0.0.min.js"></script>
+  </head>
+  <body>
+    <h2>登録したメールアドレス宛にメールをお送りしました。</h2>
+    <h2>24時間以内に、メールに記載されているリンクをクリックしユーザー登録を完了させてください。</h2>
+    <div id="userinfo"></div>
+    <span>メールが届かない方はこちら。</span>
+
+    <script type="text/javascript">
+    $(document).ready(function(){
+      var name  = sessionStorage.getItem('username');
+      var email = sessionStorage.getItem('email');
+      console.log(name+','+email);
+      $('#userinfo').append('<span>ユーザー名：'+ name + '<br>メールアドレス：' + email + '</span><br>');
+    });
+    </script>
+  </body>
+</html>
