@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8">
+
+    <!-- leaflet 1.0.3 の読み込み -->
+		<link rel="stylesheet" href="https://unpkg.com/leaflet@1.0.3/dist/leaflet.css" />
+		<script src="https://unpkg.com/leaflet@1.0.3/dist/leaflet.js"></script>
+
+		<!-- D3.jsの読み込み -->
+		<script src="https://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+
+    <!-- heatmapの読み込み -->
+    <script src="js/heatmap/heatmap.min.js"></script>
+    <script src="js/heatmap/leaflet-heatmap.js"></script>
+
+    <!-- fullscreen https://github.com/Leaflet/Leaflet.fullscreen-->
+    <script src='https://api.mapbox.com/mapbox.js/plugins/leaflet-fullscreen/v1.0.1/Leaflet.fullscreen.min.js'></script>
+    <link href='https://api.mapbox.com/mapbox.js/plugins/leaflet-fullscreen/v1.0.1/leaflet.fullscreen.css' rel='stylesheet' />
+
+    <!-- pulse icon https://github.com/mapshakers/leaflet-icon-pulse -->
+    <link href='css/pulse/L.Icon.Pulse.css' rel='stylesheet' />
+    <script src="js/pulse/L.Icon.Pulse.js"></script>
+
+    <!-- hash -->
+    <!-- <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/zepto/1.2.0/zepto.min.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.8.3/underscore-min.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-tilelayer-geojson/1.0.4/TileLayer.GeoJSON.min.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-hash/0.2.1/leaflet-hash.min.js"></script> -->
+
+    <!-- Leaflet.extra-markers https://github.com/coryasilva/Leaflet.ExtraMarkers -->
+    <link href="css/exmarker/leaflet.extra-markers.min.css" rel="stylesheet">
+    <script src="js/exmarker/leaflet.extra-markers.min.js"></script>
+
+    <!-- Bootstrap 3.3.6 -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.5.0/css/font-awesome.min.css">
+    <!-- semantic https://semantic-ui.com/introduction/getting-started.html -->
+    <!-- <link rel="stylesheet" type="text/css" href="semantic/semantic.min.css">
+    <script
+      src="https://code.jquery.com/jquery-3.1.1.min.js"
+      integrity="sha256-hVVnYaiADRTO2PzUGmuLJr8BLUSjGIZsDYGmIJLv2b8="
+      crossorigin="anonymous"></script>
+    <script src="semantic/semantic.min.js"></script> -->
+    <style>
+				.leaflet-popup-content-wrapper,
+				.leaflet-popup-tip {
+					background: rgba(210, 215, 217, 0.75);
+					border-color: 'orange-dark';
+				}
+
+				.leaflet-popup-content,
+				a.leaflet-popup-close-button {
+					color: 'orange-dark' !important;
+					font: bold 11pt monospace;
+				}
+
+				.leaflet-popup-content-wrapper {
+					border-width: 1px;
+					border-style: solid;
+				}
+
+				.leaflet-popup-tip-container {
+					margin-top: -3px;
+					height: 23px;
+				}
+
+				.leaflet-popup-tip {
+					border-style: solid;
+					border-width: 0 1px 1px 0;
+				}
+		</style>
+    <title>地図情報デモ</title>
+  </head>
+  <body>
+    <div id="map" style="width:1700px; height:800px"></div>
+    <script>
+
+    // CloudFrontを使ってアクセス先をひとつにまとめた
+    function mtsHost(path) {
+        return "http://d3m1a5kl2quueu.cloudfront.net" + path;
+    }
+
+    //中心座標
+    var pointData = [
+        [36.3879088　, 139.3202936]
+    ];
+
+    // ExtraMarkers
+    // 学校
+    var school = L.ExtraMarkers.icon({
+      icon:         'fa-graduation-cap',
+      markerColor:  'blue',
+      shape:        'circle',
+      prefix:       'fa'
+    });
+    var schoolPoint = [
+        [36.38912140369789, 139.32199358940127], //新明小学校
+        [36.38591277287654, 139.31616783142093], //桐生南高校
+        [36.39370308167724, 139.32440757751468], //桜木中学校
+        [36.38439262160467, 139.30812120437625], //笠懸東小学校
+    ];
+    var schoolMarker = schoolPoint.map(function(p){
+      return L.marker(p,{icon:school});
+    });
+
+    // 死亡事故位置
+    var death = L.ExtraMarkers.icon({
+      icon:         'fa-bus',
+      markerColor:  'red',
+      shape:        'star',
+      prefix:       'fa'
+    });
+    var deathPoint = [
+      [36.41573535,139.2784831,"平成25年4月22日午後１時２２分ころ,月,昼,晴<br>みどり市大間々町大間々地内,主要地方道前橋大間々桐生線<br>車両相互,軽四貨物車,女（高齢者）,普通乗用車,女"],
+      [36.41213906,139.3063137,"平成25年6月20日,午前１０時ころ,木,昼,曇,<br>桐生市相生町地内,市道,単路,<br>車両単独,原付,女（高齢者）,電柱"],
+      [36.3980733, 139.3226351,"平成25年7月9日,午後１１時２４分ころ,火,夜,曇,<br>桐生市相生町地内,国道１２２号,単路,車×自転車,中型貨物車,男,自転車,男"],
+      [36.38680562,139.3192303,"平成25年8月5日,午前２時３０分ごろ,月,夜,雨,<br>桐生市広沢町地内,国道５０号,単路,車×歩行者,大型貨物車,男,歩行者,男（高齢者）"],
+      [36.4261746, 139.3511322,"平成25年8月20日,午前７時４７分ごろ,火,昼,晴,<br>桐生市天神町地内,市道,単路,車×歩行者,普通乗用車,男,歩行者,男（高齢者）"],
+      [36.40536658,139.2866169,"平成25年12月20日,午前９時３７分ごろ,金,昼,雨,<br>みどり市笠懸町阿左美地内,市道,交差点,車両相互,普通乗用車,男,普通貨物車,女"],
+      [36.39344384,139.3434678,"平成26年2月26日,午後６時２８分ごろ,水,夜,晴,<br>桐生市新宿地内,県道桐生新田木崎線,交差点,車×自転車,普通乗用車,男,自転車,女"],
+      [36.41596819,139.3183458,"平成26年3月15日,午後８時２５分ごろ,土,夜,晴,<br>桐生市堤町地内,主要地方道前橋大間々桐生線,交差点,車両相互,軽四乗用車,男（高齢者）,普通乗用車,女（高齢者）"],
+      [36.43032854,139.2771052,"平成26年5月25日,午後４時２５分ころ,日,昼,晴,<br>みどり市大間々町大間々,市道,単路,車×歩行者,普通乗用車,男,歩行者,女(高齢者)"],
+      [36.41261536,139.2641888,"平成26年9月6日,午後２時１３分ころ,土曜日,昼,晴,<br>みどり市笠懸町西鹿田地内,県道境木島大間々線,交差点付近,車両×車両,大型自動二輪車,男,軽四乗用車,女"],
+      [36.37825478,139.3449401,"平成26年11月22日,午前１１時３０分ころ,土曜日,昼,晴,<br>桐生市広沢町五丁目地内,国道５０号,単路,車両単独,原付車,男（高齢者）,縁石等"],
+      [36.42646546,139.267108, "平成26年12月5日,午後４時５分ころ,金曜日,昼,晴,<br>みどり市大間々町桐原地内,主要地方道伊勢崎大間々線,単路,車両×歩行者,軽乗用車,男,歩行者,女（高齢者）"],
+      [36.38486754,139.3554732,"平成26年12月10日,午前６時０分ころ,水曜日,昼,晴,<br>桐生市境野町地内,主要地方道桐生岩舟線,交差点,車両×歩行者,普通乗用車,男,歩行者,女(高齢者)"],
+      [36.49330729,139.2749898,"平成27年6月28日,午前6時24分ころ,日曜日,昼,晴,<br>桐生市黒保根町下田沢地内,国道122号,単路,二輪車相互,大型自動二輪車,男,大型自動二輪車,男"],
+    ];
+    var deathMarker = deathPoint.map(function(p){
+      return L.marker([p[0],p[1]],{icon:death}).bindPopup(p[2]);
+    });
+
+    // 危険地域（市役所提供）
+    var danger = L.ExtraMarkers.icon({
+      icon:         'fa-exclamation',
+      markerColor:  'orange-dark',
+      shape:        'penta',
+      prefix:       'fa'
+    });
+    var dangerPoint = [
+        [36.39069760048364, 139.31777715682986,"平成29年8月10日（木）18:20頃 曇<br>	1人で友人を待っていた女子児童が男に声を掛けられたもの。<br>年齢 40～50歳くらい<br>その他、詳細は不明"],
+        [36.38674193377118, 139.31865692138675,"平成29年7月16日（日）21:40頃　晴<br>不審者による情報が寄せられたもの。<br>年齢 20～30歳くらい<br>身長 170センチ<br>体格 小太り<br>上衣 半袖Tシャツ<br>下衣 半ズボン<br>眼鏡を着用"],
+        [36.38231964015791, 139.32170391082767,"平成29年7月7日（金）13:00頃　雨<br>男が陰部を露出していたもの。<br>年齢 30～40歳くらい<br>身長 170センチくらい<br>体格 やせ型<br>上衣 黒色長袖パーカー<br>黒色のマスクな様なものを着用"],
+        [36.38950573955883, 139.32305574417117,"平成29年6月27日（火）21:00頃　晴<br>下校中の女子高生が上半身裸の男に「見て、こっち見て」と声をかけられたもの。<br>年齢 30歳くらい<br>身長 170センチくらい<br>体格 小太り<br>頭髪 黒髪短髪<br>上衣 上半身裸<br>下衣 濃いオレンジ色のステテコ<br>手に黒縁眼鏡を所持"],
+        [36.38724288086015, 139.30908679962160,"平成29年6月13日（火）19:40頃　曇<br>男が女子小学生にキスをしたもの。<br>年齢 50歳くらい<br>身長 175センチくらい<br>体格 やせ型<br>上衣 白色長袖シャツ<br>下衣 白っぽいジャージ<br>白色野球帽着用"],
+        [36.38316611425758, 139.30640459060672,"平成29年6月11日（日）22:20頃　晴<br>下校中の女子高生が中年の男に体を触られたもの。<br>身長 165センチくらい<br>体格 小太り<br>上衣 白色Tシャツ<br>下衣 グレー色のスウェット"],
+    ];
+    var dangerMarker = dangerPoint.map(function(p){
+      return L.marker([p[0],p[1]],{icon:danger}).bindPopup(p[2]);
+    });
+
+    // 危険地域（口コミ）
+    var comment = L.ExtraMarkers.icon({
+      icon:         'fa-commenting-o',
+      markerColor:  'orange',
+      shape:        'circle',
+      prefix:       'fa'
+    });
+    var commentPoint = [
+      [36.387817238636934, 139.3205934762955],
+      [36.38770927697263, 139.32061493396762],
+      [36.38763154448149, 139.32060420513156],
+      [36.38654759997985, 139.32342588901523],
+      [36.387743824721525, 139.326086640358],
+      [36.38764018142879, 139.32600080966952],
+      [36.387566767346186, 139.32573795318606],
+      [36.385316808021905, 139.32112455368045],
+      [36.38453945569464, 139.32472407817843],
+      [36.383831194586165, 139.32450950145724],
+      [36.38215120798795, 139.31611955165866],
+      [36.38229372754014, 139.3159478902817],
+      [36.38475106904242, 139.31795954704288],
+      [36.3869535411249, 139.31871056556705],
+      [36.38746744230059, 139.31919872760776],
+      [36.387562448868586, 139.3193864822388],
+      [36.39082714948319, 139.31770205497745],
+      [36.390930788527356, 139.31750893592837],
+      [36.39134966158987, 139.32314693927768],
+      [36.39160875719976, 139.32283043861392],
+      [36.391742622926536, 139.3231308460236],
+      [36.39152239209241, 139.32351708412173],
+      [36.395162598155245, 139.32042717933658],
+      [36.39472647332128, 139.3203949928284],
+      [36.39105601885471, 139.3247884511948],
+      [36.388901165438085, 139.32802855968478],
+      [36.38895298626123, 139.3275457620621],
+      [36.388076346019616, 139.32939648628238],
+      [36.38574434848935, 139.32823777198794],
+      [36.38510951482784, 139.32987928390506],
+      [36.383446830674465, 139.32928919792178],
+      [36.38277742831509, 139.33004558086398],
+      [36.38229804631035, 139.32948231697085],
+      [36.38333454422929, 139.3288761377335],
+      [36.386141656715346, 139.33065712451938],
+      [36.386638289142894, 139.33010995388034],
+      [36.38725151785061, 139.32179510593417],
+      [36.38880616050594, 139.32354390621188],
+      [36.386979452189856, 139.31632876396182],
+      [36.386124382486884, 139.31545436382297],
+      [36.382561490840885, 139.3219614028931],
+      [36.382215989634965, 139.32200431823733],
+      [36.38204323845635, 139.32168245315555],
+      [36.38257876586089, 139.32136058807376],
+      [36.387316295248574, 139.309338927269],
+      [36.387419938973046, 139.30865764617923],
+      [36.38754517495576, 139.3090867996216],
+      [36.38795542934848, 139.30943548679355],
+      [36.38766609226495, 139.30976271629336],
+      [36.38763154448149, 139.30948913097384],
+      [36.38752358255935, 139.30837869644168],
+      [36.38701831877111, 139.30849671363833],
+      [36.386802393073864, 139.30899024009707],
+      [36.383831194586165, 139.30870056152347],
+      [36.38361957873499, 139.30796563625339],
+      [36.38321793890312, 139.3068873882294],
+      [36.383952117671114, 139.30630803108218],
+      [36.38355479825728, 139.3064206838608],
+      [36.38288107808971, 139.30669963359836],
+      [36.382859484398054, 139.30636167526248],
+      [36.38251398451609, 139.3058627843857],
+      [36.38301495884414, 139.30771350860599],
+      [36.38264786590251, 139.30769205093387],
+      [36.38492813282968, 139.31096971035007],
+      [36.38475106904242, 139.3104708194733],
+      [36.38500586802357, 139.30992364883426],
+      [36.38261331588939, 139.30374920368197],
+      [36.382082107505, 139.30300891399386],
+      [36.38439262160467, 139.3057876825333],
+      [36.3934612656499, 139.32696104049685],
+      [36.393426720441724, 139.32630658149722],
+    ];
+    var commentMarker = commentPoint.map(function(p){
+      return L.marker(p,{icon:comment});
+    });
+
+    //BASEレイヤの定義
+    var baseLayers = [
+        {
+            title: "地域安全マップ",
+            memo: "https://openstreetmap.jp/",
+            layer: L.tileLayer(
+                    'http://{s}.tiles.wmflabs.org/bw-mapnik/{z}/{x}/{y}.png',
+                    {
+                        attribution: 'Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a>'
+                    }
+            )
+        },
+        {
+            title: "OpenStreetMap",
+            memo: "https://openstreetmap.jp/",
+            layer: L.tileLayer(
+                    //"http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+                    mtsHost("/{z}/{x}/{y}.png"),
+                    {
+                        attribution: 'Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a>'
+                    }
+            )
+        },
+        {
+            title: "地理院地図 標準",
+            memo: "http://maps.gsi.go.jp/development/ichiran.html#std",
+            layer: L.tileLayer(
+                    //"http://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png",
+                    mtsHost("/xyz/std/{z}/{x}/{y}.png"),
+                    {
+                        attribution: "<a href='http://www.gsi.go.jp/kikakuchousei/kikakuchousei40182.html' target='_blank'>国土地理院</a>"
+                    }
+            )
+        },
+        {
+            title: "地理院地図 オルソ",
+            memo: "http://maps.gsi.go.jp/development/ichiran.html#orz",
+            layer: L.tileLayer(
+                    //"http://cyberjapandata.gsi.go.jp/xyz/ort/{z}/{x}/{y}.jpg",
+                    mtsHost("/xyz/ort/{z}/{x}/{y}.jpg"),
+                    {}
+            )
+        },
+        {
+            title: "写真(1974年) [10-17]",
+            memo: "http://maps.gsi.go.jp/development/ichiran.html#gazo1",
+            layer: L.tileLayer(
+                    //"http://cyberjapandata.gsi.go.jp/xyz/gazo1/{z}/{x}/{y}.jpg",
+                    mtsHost("/xyz/gazo1/{z}/{x}/{y}.jpg"),
+                    {}
+            )
+        },
+        {
+            title: "写真(1979年) [10-17]",
+            memo: "http://maps.gsi.go.jp/development/ichiran.html#gazo2",
+            layer: L.tileLayer(
+                    //"http://cyberjapandata.gsi.go.jp/xyz/gazo2/{z}/{x}/{y}.jpg",
+                    mtsHost("/xyz/gazo2/{z}/{x}/{y}.jpg"),
+                    {}
+            )
+        },
+        {
+            title: "写真(1984年) [10-17]",
+            memo: "http://maps.gsi.go.jp/development/ichiran.html#gazo3",
+            layer: L.tileLayer(
+                    //"http://cyberjapandata.gsi.go.jp/xyz/gazo3/{z}/{x}/{y}.jpg",
+                    mtsHost("/xyz/gazo3/{z}/{x}/{y}.jpg"),
+                    {}
+            )
+        },
+        {
+            title: "写真(1988年) [10-17]",
+            memo: "http://maps.gsi.go.jp/development/ichiran.html#gazo4",
+            layer: L.tileLayer(
+                    //"http://cyberjapandata.gsi.go.jp/xyz/gazo4/{z}/{x}/{y}.jpg",
+                    mtsHost("/xyz/gazo4/{z}/{x}/{y}.jpg"),
+                    {}
+            )
+        },
+        {
+            title: "簡易空中写真(2004年) [15-18]",
+            memo: "http://maps.gsi.go.jp/development/ichiran.html#airphoto",
+            layer: L.tileLayer(
+                    //"http://cyberjapandata.gsi.go.jp/xyz/airphoto/{z}/{x}/{y}.png",
+                    mtsHost("/xyz/airphoto/{z}/{x}/{y}.png"),
+                    {}
+            )
+        },
+        {
+            title: "白地図 [5-14]",
+            memo: "http://maps.gsi.go.jp/development/ichiran.html#blank",
+            layer: L.tileLayer(
+                    //"http://cyberjapandata.gsi.go.jp/xyz/blank/{z}/{x}/{y}.png",
+                    mtsHost("/xyz/blank/{z}/{x}/{y}.png"),
+                    {}
+            )
+        }
+    ];
+    //オーバーレイの定義
+    var overLayers = [
+        {
+            title: "学校位置",
+            layer: L.layerGroup(schoolMarker)
+        },
+        {
+            title: "市役所提供危険地域",
+            layer: L.layerGroup(dangerMarker)
+        },
+        {
+            title: "安全安心情報＜市民提供＞",
+            layer: L.layerGroup(commentMarker)
+        },
+        {
+            title: "交通死亡事故発生ポイント",
+            layer: L.layerGroup(deathMarker)
+        },
+        {
+            title: "色別標高図 [5-15]",
+            memo: "http://maps.gsi.go.jp/development/ichiran.html#relief",
+            layer: L.tileLayer(
+                    //"http://cyberjapandata.gsi.go.jp/xyz/relief/{z}/{x}/{y}.png",
+                    mtsHost("/xyz/relief/{z}/{x}/{y}.png"),
+                    {
+                        opacity: 0.6
+                    }
+            )
+        },
+        {
+            title: "土地利用図 [11-14]",
+            memo: "http://maps.gsi.go.jp/development/ichiran.html#lum200k",
+            layer: L.tileLayer(
+                    //"http://cyberjapandata.gsi.go.jp/xyz/lum200k/{z}/{x}/{y}.png",
+                    mtsHost("/xyz/lum200k/{z}/{x}/{y}.png"),
+                    {
+                        opacity: 0.6
+                    }
+            )
+        },
+        {
+            title: "地質 [5-13]",
+            memo: "https://gbank.gsj.jp/seamless/wmts/wmts.html",
+            layer: L.tileLayer(
+                    //"https://gbank.gsj.jp/seamless/tilemap/detailed/g/{z}/{y}/{x}.png",
+                    mtsHost("/tilemap/detailed/g/{z}/{y}/{x}.png"),
+                    {
+                        opacity: 0.6
+                    }
+            )
+        },
+        {
+            title: "断層・褶曲 [9-13]",
+            memo: "https://gbank.gsj.jp/seamless/wmts/wmts.html",
+            layer: L.tileLayer(
+                    //"https://gbank.gsj.jp/seamless/tilemap/detailed/f/{z}/{y}/{x}.png",
+                    mtsHost("/tilemap/detailed/f/{z}/{y}/{x}.png"),
+                    {}
+            )
+        },
+        {
+            title: "土地条件 [10-16]",
+            memo: "http://maps.gsi.go.jp/development/ichiran.html#lcm25k_2012",
+            layer: L.tileLayer(
+                    //"http://cyberjapandata.gsi.go.jp/xyz/lcm25k_2012/{z}/{x}/{y}.png",
+                    mtsHost("/xyz/lcm25k_2012/{z}/{x}/{y}.png"),
+                    {
+                        opacity: 0.8
+                    }
+            )
+        }
+    ];
+
+    // 地図オブジェクト（leafletのmapオブジェクト）の生成
+    var map = L.map('map', {
+        center: pointData[0],
+        zoom: 16,
+        layers: [baseLayers[0].layer],
+        scrollWheelZoom: false
+    });
+
+    // レイヤコントロールの作成
+    L.control.scale().addTo(map);
+    function toMaps(layers) {
+        return layers.reduce(function (memo, layer) {
+            memo[layer.title] = layer.layer;
+            return memo;
+        }, {});
+    }
+    var layerControl = L.control.layers(toMaps(baseLayers), toMaps(overLayers)).addTo(map);
+
+    //Fullscreen対応
+    map.addControl(new L.Control.Fullscreen());
+
+    //pulse icon 対応
+    var pulsingIcon = L.icon.pulse({iconSize:[30,30],color:'red'});
+    var marker = L.marker([36.388624787131334, 139.32013750076297],{icon: pulsingIcon}).addTo(map);
+
+    // //　写真マーカー
+    // var photo = L.icon({
+    //   iconUrl: 'images/refuge_flood.png',
+    //   iconRetinaUrl: 'images/refuge_flood.png',
+    //   iconSize: [50, 50],
+    //   iconAnchor: [25, 50],
+    //   popupAnchor: [0, -50],
+    //
+    // });
+    // L.marker([36.38637917696778, 139.325544834137], { icon: photo }).bindPopup( "test",{maxWidth:"100",closeOnClick: true}).addTo(map);
+
+    //座標取る用
+    map.on('click', function (e) {
+        console.log(e.latlng.lat+", "+e.latlng.lng);
+    });
+    </script>
+  </body>
+</html>
